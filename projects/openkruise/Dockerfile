@@ -1,5 +1,4 @@
-#!/bin/bash -eu
-# Copyright 2020 Google Inc.
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,20 +14,7 @@
 #
 ################################################################################
 
-# build project
-mkdir build
-cd build
-cmake -DSPM_ENABLE_SHARED=ON ..
-make -j $(nproc)
-make install
-
-# build fuzzers
-for fuzzer in $(find $SRC -name '*_fuzzer.cc' | grep -v 'third_party'); do
-  fuzz_basename=$(basename -s .cc $fuzzer)
-  $CXX $CXXFLAGS -std=c++17 -I. -I$SRC/sentencepiece \
-      -I$SRC/sentencepiece/src \
-      -I$SRC/sentencepiece/src/builtin_pb/ \
-      -I$SRC/sentencepiece/third_party/protobuf-lite/ \
-        $fuzzer $LIB_FUZZING_ENGINE ./src/libsentencepiece.a \
-        -o $OUT/$fuzz_basename
-done
+FROM gcr.io/oss-fuzz-base/base-builder-go
+RUN git clone --depth 1 https://github.com/openkruise/kruise
+COPY build.sh $SRC/
+WORKDIR $SRC/kruise

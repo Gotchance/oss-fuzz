@@ -1,5 +1,5 @@
 #!/bin/bash -eu
-# Copyright 2020 Google Inc.
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,20 +15,15 @@
 #
 ################################################################################
 
-# build project
-mkdir build
-cd build
-cmake -DSPM_ENABLE_SHARED=ON ..
-make -j $(nproc)
-make install
+cd $SRC/go-118-fuzz-build
+go build .
+mv go-118-fuzz-build /root/go/bin/
 
-# build fuzzers
-for fuzzer in $(find $SRC -name '*_fuzzer.cc' | grep -v 'third_party'); do
-  fuzz_basename=$(basename -s .cc $fuzzer)
-  $CXX $CXXFLAGS -std=c++17 -I. -I$SRC/sentencepiece \
-      -I$SRC/sentencepiece/src \
-      -I$SRC/sentencepiece/src/builtin_pb/ \
-      -I$SRC/sentencepiece/third_party/protobuf-lite/ \
-        $fuzzer $LIB_FUZZING_ENGINE ./src/libsentencepiece.a \
-        -o $OUT/$fuzz_basename
-done
+cd $SRC/opentelemetry-go
+
+pushd sdk/metric/internal/aggregate
+printf "package aggregate \nimport _ \"github.com/AdamKorcz/go-118-fuzz-build/testing\"\n" > ./fuzz-register.go
+go mod edit -replace github.com/AdamKorcz/go-118-fuzz-build=$SRC/go-118-fuzz-build
+go mod tidy
+compile_native_go_fuzzer $(go list) FuzzGetBin FuzzGetBin
+popd
