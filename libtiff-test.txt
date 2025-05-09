@@ -1,0 +1,107 @@
+The following text is a Git repository with code. The structure of the text are sections that begin with ----, followed by a single line containing the file path and file name, followed by a variable amount of lines containing the file contents. The text representing the Git repository ends when the symbols --END-- are encounted. Any further text beyond --END-- are meant to be interpreted as instructions using the aforementioned Git repository as context.
+----
+tiffcp_fuzzer.cc
+#include <tiffio.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
+  if (size < 4) return 0;
+
+  // 入力を一時ファイルに保存
+  const char *in_file = "/tmp/fuzz_input.tif";
+  FILE *fp = fopen(in_file, "wb");
+  if (!fp) return 0;
+  fwrite(data, 1, size, fp);
+  fclose(fp);
+
+  // TIFF ファイルとして開く
+  TIFF *tif = TIFFOpen(in_file, "r");
+  if (tif) {
+    // TIFFのディレクトリを読む（脆弱性が発生しやすい処理）
+    TIFFReadDirectory(tif);
+
+    // 必要に応じて他の処理もここに追加できます
+
+    TIFFClose(tif);
+  }
+
+  return 0;
+}
+
+----
+Dockerfile
+# Copyright 2018 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+################################################################################
+
+FROM gcr.io/oss-fuzz-base/base-builder
+
+RUN apt-get update && apt-get install -y git autoconf automake libtool make
+
+WORKDIR /src
+RUN git clone https://gitlab.com/libtiff/libtiff.git
+WORKDIR /src/libtiff
+RUN git checkout v4.0.6  # CVE-2016-9273が含まれる公式リリース
+
+COPY build.sh $SRC/
+COPY tiffcp_fuzzer.cc /src/libtiff/tools/
+
+----
+build.sh
+#!/bin/bash -eu
+
+# libtiff ソースディレクトリに移動
+cd $SRC/libtiff
+
+# autoconf 系ビルド
+./autogen.sh
+./configure
+make -j$(nproc)
+
+# Fuzzerのソース（自作したものを使う）
+FUZZER_SRC=$SRC/libtiff/tools/tiffcp_fuzzer.cc
+
+# libFuzzer付きでFuzzerバイナリを生成
+$CXX $CXXFLAGS -std=c++11 -I. -Ilibtiff \
+  $FUZZER_SRC -o $OUT/tiffcp_fuzzer \
+  $LIB_FUZZING_ENGINE libtiff/.libs/libtiff.a
+
+----
+project.yaml
+homepage: "http://www.libtiff.org"
+language: c++
+primary_contact: "even.rouault@gmail.com"
+auto_ccs:
+  - paul.l.kehrer@gmail.com
+sanitizers:
+  - address
+# Disabled MSAN because of https://github.com/google/oss-fuzz/issues/6294
+#  - memory
+  - undefined
+architectures:
+  - x86_64
+  - i386
+main_repo: 'https://gitlab.com/libtiff/libtiff'
+fuzzing_engines:
+  - afl
+  - honggfuzz
+  - libfuzzer
+
+
+--END--
