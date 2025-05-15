@@ -61,7 +61,7 @@ jobs:
 
     - name: Upload crash artifacts (raw and base64)
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: fuzz-crashes
         path: |
@@ -78,7 +78,7 @@ jobs:
 
     - name: Upload introspector report
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: introspector-report
         path: build/out/zlib/introspector-report/
