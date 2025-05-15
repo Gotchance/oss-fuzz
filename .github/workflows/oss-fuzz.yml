@@ -29,10 +29,10 @@ jobs:
       run: |
         python3 infra/helper.py build_fuzzers zlib
 
-    - name: Run fuzzers with corpus and dump crash info
+    - name: Run fuzzers and dump crash info
       run: |
         mkdir -p artifacts
-        python3 infra/helper.py run_fuzzer zlib compress_fuzzer corpus/ || true
+        python3 infra/helper.py run_fuzzer zlib compress_fuzzer || true
 
         echo "===== Crash files ====="
         if ls build/out/zlib/crash-* 1>/dev/null 2>&1; then
@@ -47,11 +47,38 @@ jobs:
           echo "No crash files found."
         fi
 
-    - name: Introspector build
+    - name: Dump crash PoCs as base64 .txt
+      if: always()
+      run: |
+        mkdir -p artifacts_base64
+        if ls build/out/zlib/crash-* 1>/dev/null 2>&1; then
+          for f in build/out/zlib/crash-*; do
+            base64 "$f" > "artifacts_base64/$(basename "$f").txt"
+          done
+        else
+          echo "No crash files to encode."
+        fi
+
+    - name: Upload crash artifacts (raw and base64)
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: fuzz-crashes
+        path: |
+          artifacts/
+          artifacts_base64/
+
+    - name: Build fuzzers for introspector
       run: |
         python3 infra/helper.py build_fuzzers --sanitizer=introspector zlib
 
-    - name: Run Introspector analysis (30s)
+    - name: Run introspector (30s)
       run: |
-        python3 infra/helper.py introspector zlib --seconds=30
-        echo "Introspector report should be under build/out/zlib/introspector-report/inspector"
+        python3 infra/helper.py introspector zlib --seconds=30 || true
+
+    - name: Upload introspector report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: introspector-report
+        path: build/out/zlib/introspector-report/
