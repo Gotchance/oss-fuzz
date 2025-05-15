@@ -25,7 +25,7 @@ jobs:
     - name: Run fuzzers and dump crash info
       run: |
         mkdir -p artifacts
-        python3 infra/helper.py run_fuzzer zlib compress_fuzzer corpus/ || true
+        python3 infra/helper.py run_fuzzer zlib compress_fuzzer || true
 
         echo "===== Crash files ====="
         if ls build/out/zlib/crash-* 1>/dev/null 2>&1; then
