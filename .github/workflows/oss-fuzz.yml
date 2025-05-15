@@ -1,12 +1,17 @@
 name: OSS-Fuzz Emulation CI
 
 on:
-  workflow_dispatch:          # Manual trigger
-  push:                       # Trigger on push to main
+  # Manual execution option
+  workflow_dispatch:
+
+  # Trigger on push to main
+  push:
     branches:
       - main
-  schedule:                   # Run every 5 minutes (for testing)
-    - cron: '*/5 * * * *'
+
+  # Scheduled daily run at 00:00 UTC
+  schedule:
+    - cron: '0 0 * * *'
 
 jobs:
   fuzz:
@@ -24,10 +29,10 @@ jobs:
       run: |
         python3 infra/helper.py build_fuzzers zlib
 
-    - name: Run fuzzers and dump crash info
+    - name: Run fuzzers with corpus and dump crash info
       run: |
         mkdir -p artifacts
-        python3 infra/helper.py run_fuzzer zlib compress_fuzzer || true
+        python3 infra/helper.py run_fuzzer zlib compress_fuzzer corpus/ || true
 
         echo "===== Crash files ====="
         if ls build/out/zlib/crash-* 1>/dev/null 2>&1; then
@@ -41,3 +46,12 @@ jobs:
         else
           echo "No crash files found."
         fi
+
+    - name: Introspector build
+      run: |
+        python3 infra/helper.py build_fuzzers --sanitizer=introspector zlib
+
+    - name: Run Introspector analysis (30s)
+      run: |
+        python3 infra/helper.py introspector zlib --seconds=30
+        echo "Introspector report should be under build/out/zlib/introspector-report/inspector"
