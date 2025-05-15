@@ -17,26 +17,14 @@
 
 cd $SRC/zlib
 
-# # 1. 故意のバグを挿入
-# echo "[INFO] Inserting abort() into deflate()"
-# # abort(); を deflate() の本体直前に強制挿入
-# sed -i '/deflate(z_streamp strm, int flush)/a\
-#   abort();
-# ' deflate.c
-
-# # パッチ確認ログ
-# echo "==== CHECK deflate.c ===="
-# grep -A5 'deflate(z_streamp strm, int flush)' deflate.c
-
-
-# 2. ビルド
+# 1. ビルド
 ./configure
 make -j$(nproc)
 # make -j$(nproc) clean
 # make -j$(nproc) all
 # make -j$(nproc) check
 
-# 3. Fuzzer ビルド
+# 2. Fuzzer ビルド
 for f in $(find $SRC -name '*_fuzzer.c'); do
     b=$(basename -s .c $f)
     $CC $CFLAGS -I. $f -c -o /tmp/$b.o
@@ -45,5 +33,5 @@ for f in $(find $SRC -name '*_fuzzer.c'); do
     ln -sf $OUT/seed_corpus.zip $OUT/${b}_seed_corpus.zip
 done
 
-# 4. Seed Corpus
+# 3. Seed Corpus
 zip $OUT/seed_corpus.zip *.*
