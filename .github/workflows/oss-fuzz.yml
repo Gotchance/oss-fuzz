@@ -29,44 +29,26 @@ jobs:
       run: |
         python3 infra/helper.py build_fuzzers zlib
 
-    - name: Run fuzzers and dump crash info
+    - name: Run fuzzers and capture crash info
       run: |
         mkdir -p artifacts
-        python3 infra/helper.py run_fuzzer zlib compress_fuzzer || true
+        # Run fuzzer and save both stdout and stderr to log.txt
+        (python3 infra/helper.py run_fuzzer zlib compress_fuzzer || true) 2>&1 | tee artifacts/log.txt
 
-        echo "===== Crash files ====="
+        # Copy PoC crash files if any
         if ls build/out/zlib/crash-* 1>/dev/null 2>&1; then
-          ls -lh build/out/zlib/crash-*
-          echo "===== Crash contents (base64) ====="
-          for f in build/out/zlib/crash-*; do
-            echo "[PoC file: $f]"
-            base64 "$f" | head -n 10
-            echo "---"
-          done
-        else
-          echo "No crash files found."
+          cp build/out/zlib/crash-* artifacts/
         fi
 
-    - name: Dump crash PoCs as base64 .txt
-      if: always()
-      run: |
-        mkdir -p artifacts_base64
-        if ls build/out/zlib/crash-* 1>/dev/null 2>&1; then
-          for f in build/out/zlib/crash-*; do
-            base64 "$f" > "artifacts_base64/$(basename "$f").txt"
-          done
-        else
-          echo "No crash files to encode."
-        fi
+        # Save the fuzzer binary too
+        cp build/out/zlib/compress_fuzzer artifacts/
 
-    - name: Upload crash artifacts (raw and base64)
+    - name: Upload fuzz artifacts (PoC, binary, logs)
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: fuzz-crashes
-        path: |
-          artifacts/
-          artifacts_base64/
+        name: fuzz-repro-assets
+        path: artifacts/
 
     - name: Build fuzzers for introspector
       run: |
