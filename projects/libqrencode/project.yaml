@@ -1,0 +1,11 @@
+homepage: "https://fukuchi.org/works/qrencode/"
+main_repo: "https://github.com/fukuchi/libqrencode"
+language: c
+fuzzing_engines:
+  - libfuzzer
+sanitizers:
+  - address
+  - undefined
+  - memory
+architectures:
+  - x86_64
