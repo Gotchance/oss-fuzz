@@ -17,14 +17,14 @@
 
 cd $SRC/zlib
 
-# 1. ビルド
+# 1. build
 ./configure
 make -j$(nproc)
 # make -j$(nproc) clean
 # make -j$(nproc) all
 # make -j$(nproc) check
 
-# 2. Fuzzer ビルド
+# 2. Fuzzer build
 for f in $(find $SRC -name '*_fuzzer.c'); do
     b=$(basename -s .c $f)
     $CC $CFLAGS -I. $f -c -o /tmp/$b.o
@@ -32,6 +32,3 @@ for f in $(find $SRC -name '*_fuzzer.c'); do
     rm -f /tmp/$b.o
     ln -sf $OUT/seed_corpus.zip $OUT/${b}_seed_corpus.zip
 done
-
-# 3. Seed Corpus
-zip $OUT/seed_corpus.zip *.*

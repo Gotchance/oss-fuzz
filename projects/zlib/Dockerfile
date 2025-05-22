@@ -16,16 +16,16 @@
 
 FROM gcr.io/oss-fuzz-base/base-builder
 RUN apt-get update && apt-get install -y make autoconf automake libtool
-# 最新の develop ブランチをクローン（任意で固定バージョンにしてもOK）
+# Clone the latest develop branch (you can also fix a specific version if you prefer).
 RUN git clone --depth 1 -b develop https://github.com/madler/zlib.git
-# 作業ディレクトリを zlib に設定
+# Set the working directory to zlib
 WORKDIR zlib
 
-# 🔧 deflate() 関数に abort(); を挿入（確実に反映させる）
+# Insert abort(); into the deflate() function
 RUN sed -i '/deflate(z_streamp strm, int flush)/a\
   abort();' deflate.c \
   && echo "==== Confirm inserted abort() ====" \
   && grep -A5 'deflate(z_streamp strm, int flush)' deflate.c
 
-# OSS-Fuzzが使うビルドスクリプトやfuzzerをコピー
+# Copy the build scripts and fuzzers used by OSS-Fuzz.
 COPY build.sh *_fuzzer.c* $SRC/
